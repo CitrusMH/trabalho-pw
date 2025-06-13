@@ -1,4 +1,3 @@
-
 <template>
   <div class="main-page">
     <div v-if="!user" class="login-section">
@@ -15,6 +14,7 @@
               v-model="username"
               placeholder="Digite seu nome de usuário"
               class="username-input"
+              @keyup.enter="createProfile"
             />
             <button @click="createProfile" class="create-profile-button">
               Criar Perfil
@@ -26,6 +26,7 @@
             v-model="newComment"
             placeholder="Escreva seu comentário aqui..."
             class="comment-textarea"
+            @keyup.enter.ctrl="postComment"
           ></textarea>
           <button
             @click="postComment"
@@ -36,7 +37,6 @@
           </button>
         </div>
       </div>
-
 
       <div class="comments-list">
         <h2>Comentários Recentes</h2>
@@ -212,7 +212,6 @@ h2 {
 }
 
 .profile-warning {
-  background-color: #3a3a3a;
   color: #ffda6a;
   padding: 15px;
   border-radius: 20px;

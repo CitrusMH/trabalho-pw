@@ -20,9 +20,6 @@ const showToast = inject("showToast") as (
   type?: "success" | "error" | "info"
 ) => void;
 
-// Exemplo de uso:
-showToast("Comentário enviado com sucesso!", "success");
-showToast("Erro ao enviar comentário", "error");
 </script>
 
 <style scoped>

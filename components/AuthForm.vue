@@ -2,8 +2,13 @@
   <div>
     <h2 v-if="!isLogin">Cadastro</h2>
     <h2 v-else>Login</h2>
-    <input v-model="email" placeholder="email" />
-    <input v-model="password" type="password" placeholder="senha" />
+    <input v-model="email" placeholder="email" @keyup.enter="submit" />
+    <input
+      v-model="password"
+      type="password"
+      placeholder="senha"
+      @keyup.enter="submit"
+    />
     <button @click="submit">
       {{ isLogin ? "Entrar" : "Cadastrar" }}
     </button>
