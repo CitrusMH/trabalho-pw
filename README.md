@@ -1,4 +1,5 @@
 # Sistema de Comentários com Nuxt 3 e Supabase
+[clique para acessar](https://trabalho-pw-henna.vercel.app/) 
 
 Este é um sistema de comentários moderno desenvolvido com Nuxt 3 e Supabase, oferecendo uma experiência de usuário fluida e segura.
 
