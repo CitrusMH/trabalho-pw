@@ -218,7 +218,6 @@ h2 {
   border-radius: 20px;
   margin-bottom: 15px;
   text-align: center;
-  border: 1px solid #444444;
 }
 
 .profile-form {
