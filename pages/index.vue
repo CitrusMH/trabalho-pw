@@ -8,7 +8,7 @@
       <div class="comment-form">
         <h2>Novo Comentário</h2>
         <div v-if="!profile" class="profile-warning">
-          Você precisa criar um perfil antes de comentar.
+          Você precisa criar um pnome de usuário antes de comentar.
           <div class="profile-form">
             <input
               v-model="username"
@@ -17,7 +17,7 @@
               @keyup.enter="createProfile"
             />
             <button @click="createProfile" class="create-profile-button">
-              Criar Perfil
+              Criar Nome de Usuário
             </button>
           </div>
         </div>
