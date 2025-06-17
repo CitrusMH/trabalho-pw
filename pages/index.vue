@@ -45,18 +45,51 @@
         </div>
         <div
           v-else
-          class="comment-item"
+          class="comment"
           v-for="comment in comments"
           :key="comment.id"
+          :class="{ 'my-comment': comment.user_id === user?.id }"
         >
-          <div class="comment-header">
-            <strong>{{ comment.profiles?.username || "Usuário" }}</strong>
-            <span class="comment-date">{{
-              formatDate(comment.inserted_at)
-            }}</span>
+          <div
+            class="comment-header"
+            :class="{ 'my-comment-header': comment.user_id === user?.id }"
+          >
+            <template v-if="comment.user_id === user?.id">
+              <span class="comment-date">{{
+                formatDate(comment.inserted_at)
+              }}</span>
+              <strong>{{ comment.profiles?.username || "Usuário" }}</strong>
+            </template>
+            <template v-else>
+              <strong>{{ comment.profiles?.username || "Usuário" }}</strong>
+              <span class="comment-date">{{
+                formatDate(comment.inserted_at)
+              }}</span>
+            </template>
           </div>
           <p class="comment-content">{{ comment.content }}</p>
         </div>
+      </div>
+
+      <!-- Controles de Paginação -->
+      <div class="pagination-controls" v-if="totalPages > 1">
+        <button
+          @click="changePage(currentPage - 1)"
+          :disabled="currentPage === 1"
+          class="pagination-button"
+        >
+          Anterior
+        </button>
+        <span class="page-info"
+          >Página {{ currentPage }} de {{ totalPages }}</span
+        >
+        <button
+          @click="changePage(currentPage + 1)"
+          :disabled="currentPage === totalPages"
+          class="pagination-button"
+        >
+          Próxima
+        </button>
       </div>
     </div>
   </div>
@@ -65,98 +98,138 @@
 <script setup lang="ts">
 const supa = useSupabaseClient();
 const user = useSupabaseUser();
-const comments = ref<any[]>([]);
+
+interface Comment {
+  id: string;
+  content: string;
+  inserted_at: string;
+  user_id: string;
+  profiles: {
+    username: string;
+  };
+}
+
+interface Profile {
+  id: string;
+  username: string;
+}
+
+const comments = ref<Comment[]>([]);
 const newComment = ref("");
-const profile = ref<{ username: string } | null>(null);
+const profile = ref<Profile | null>(null);
 const username = ref("");
+const currentPage = ref(1);
+const commentsPerPage = 6;
+const totalPages = ref(1);
 
 const showToast = inject("showToast") as (
   msg: string,
   type?: "success" | "error" | "info"
 ) => void;
 
-// Observa as mudanças no objeto user (autenticação)
+const fetchProfile = async () => {
+  if (!user.value) return;
+
+  try {
+    const { data, error } = await supa
+      .from("profiles")
+      .select("username")
+      .eq("id", user.value.id)
+      .single();
+
+    if (error) throw error;
+    profile.value = data;
+  } catch (error) {
+    console.error("Erro ao buscar perfil:", error);
+    showToast("Erro ao carregar perfil.", "error");
+  }
+};
+
+const fetchComments = async () => {
+  try {
+    const { data, error, count } = await supa
+      .from("comments")
+      .select(
+        `
+        *,
+        profiles:user_id (
+          username
+        )
+      `,
+        { count: "exact" }
+      )
+      .order("inserted_at", { ascending: false })
+      .range(
+        (currentPage.value - 1) * commentsPerPage,
+        currentPage.value * commentsPerPage - 1
+      );
+
+    if (error) throw error;
+
+    comments.value = data || [];
+    if (count) {
+      totalPages.value = Math.ceil(count / commentsPerPage);
+    }
+  } catch (error) {
+    console.error("Erro ao buscar comentários:", error);
+    showToast("Erro ao carregar comentários.", "error");
+  }
+};
+
+const createProfile = async () => {
+  if (!user.value) return;
+
+  try {
+    const { error } = await supa.from("profiles").insert({
+      id: user.value.id,
+      username: username.value,
+    });
+
+    if (error) throw error;
+
+    await fetchProfile();
+    showToast("Perfil criado com sucesso!", "success");
+  } catch (error) {
+    console.error("Erro ao criar perfil:", error);
+    showToast("Erro ao criar perfil.", "error");
+  }
+};
+
+const postComment = async () => {
+  if (!user.value || !profile.value) return;
+
+  try {
+    const { error } = await supa.from("comments").insert({
+      content: newComment.value,
+      user_id: user.value.id,
+    });
+
+    if (error) throw error;
+
+    newComment.value = "";
+    await fetchComments();
+    showToast("Comentário postado com sucesso!", "success");
+  } catch (error) {
+    console.error("Erro ao postar comentário:", error);
+    showToast("Erro ao postar comentário.", "error");
+  }
+};
+
+// Observar mudanças no usuário
 watch(
-  user,
+  () => user.value,
   async (newUser) => {
     if (newUser) {
-      // Se houver um usuário logado, verifica perfil e busca comentários
-      await checkProfile();
+      currentPage.value = 1;
+      await fetchProfile();
       await fetchComments();
     } else {
-      // Se o usuário deslogou, limpa o perfil e os comentários
       profile.value = null;
       comments.value = [];
     }
   },
   { immediate: true }
-); // O 'immediate: true' garante que a função execute na montagem inicial também
-
-async function checkProfile() {
-  if (!user.value) return;
-
-  const { data, error } = await supa
-    .from("profiles")
-    .select("username")
-    .eq("id", user.value.id)
-    .single();
-
-  if (error) {
-    console.error("Erro ao buscar perfil:", error);
-    profile.value = null;
-    showToast("Erro ao buscar perfil.", "error");
-  } else {
-    profile.value = data;
-  }
-}
-
-async function createProfile() {
-  if (!username.value.trim()) {
-    showToast("Por favor, insira um nome de usuário.", "info");
-    return;
-  }
-
-  try {
-    await $fetch("/api/profile", {
-      method: "POST",
-      body: { username: username.value },
-    });
-    await checkProfile();
-    username.value = "";
-    showToast("Perfil criado com sucesso!", "success");
-  } catch (error: any) {
-    showToast(error.message || "Erro ao criar perfil.", "error");
-  }
-}
-
-async function fetchComments() {
-  try {
-    comments.value = await $fetch("/api/comments");
-  } catch (error) {
-    console.error("Erro ao buscar comentários:", error);
-    showToast("Erro ao carregar comentários.", "error");
-  }
-}
-
-async function postComment() {
-  if (!newComment.value.trim()) return;
-
-  try {
-    await $fetch("/api/comments", {
-      method: "POST",
-      body: { content: newComment.value },
-    });
-    newComment.value = "";
-    await fetchComments();
-    showToast("Comentário enviado com sucesso!", "success");
-  } catch (error: any) {
-    console.error("Erro ao enviar comentário:", error);
-    showToast(
-      error.message || "Erro ao enviar comentário. Tente novamente.",
-      "error"
-    );
-  }
-}
+);
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleString("pt-BR", {
@@ -167,6 +240,14 @@ function formatDate(dateString: string) {
     minute: "2-digit",
   });
 }
+
+// Função para mudar de página
+const changePage = (newPage: number) => {
+  if (newPage >= 1 && newPage <= totalPages.value) {
+    currentPage.value = newPage;
+    fetchComments();
+  }
+};
 </script>
 
 <style scoped>
@@ -290,26 +371,35 @@ h2 {
   margin-top: 20px;
 }
 
-.comment-item {
-  background-color: #00000040;
+.comment {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
   backdrop-filter: blur(10px);
-  padding: 15px;
-  margin-bottom: 15px;
-  border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  color: #e0e0e0;
-  border: 1px solid #444444;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.my-comment {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .comment-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  flex-direction: row-reverse;
+}
+
+.comment-header {
+  flex-direction: row;
 }
 
 .comment-date {
-  color: #aaaaaa;
-  font-size: 0.9em;
+  color: #888;
 }
 
 .comment-content {
@@ -325,5 +415,40 @@ h2 {
   backdrop-filter: blur(10px);
   border-radius: 20px;
   border: 1px solid #444444;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1rem;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.pagination-button {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  color: white;
+  font-size: 0.9rem;
 }
 </style>
