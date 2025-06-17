@@ -1,4 +1,5 @@
 # Sistema de Comentários com Nuxt 3 e Supabase
+[clique para acessar](https://trabalho-pw-henna.vercel.app/) 
 
 Este é um sistema de comentários moderno desenvolvido com Nuxt 3 e Supabase, oferecendo uma experiência de usuário fluida e segura.
 
@@ -92,21 +93,3 @@ O sistema utiliza o Supabase Auth para gerenciar a autenticação dos usuários.
 - `npm run build` - Compila o projeto para produção
 - `npm run generate` - Gera uma versão estática do site
 - `npm run preview` - Visualiza a versão de produção localmente
-
-## 🤝 Contribuindo
-
-1. Faça um Fork do projeto
-2. Crie uma Branch para sua Feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a Branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
-
-## ✨ Agradecimentos
-
-- Equipe do Nuxt.js
-- Equipe do Supabase
-- Comunidade Vue.js
